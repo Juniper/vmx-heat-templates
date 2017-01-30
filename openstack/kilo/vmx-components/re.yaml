@@ -1,0 +1,67 @@
+#Copyright (c) Juniper Networks, Inc., 2017-2024.
+#All rights reserved.
+
+heat_template_version: 2015-04-30 
+parameters:
+  project_name: {description: Project name, type: string}
+  public_network: {description: ID of public network, type: string}
+  re_pfe_network: {description: ID of RE-PFE network, type: string}
+  vcp_flavor: {description: Type of Image, type: string}
+  vcp_image: {description: Junos RE image, type: string}
+  gateway_ip: {description: ip of gateway, type: string}
+  stack_name: {description: Stack name, type: string}
+
+resources:
+  re_fixed_net:
+    type: vm_fixed_net.yaml
+    properties:
+      public_network: {get_param: public_network}
+      re_pfe_network: {get_param: re_pfe_network}
+      ext_name: public_re
+      int_name: internal_re
+      internal_ip: 128.0.0.1
+      stack_name: {get_param: stack_name}
+
+  re:
+    properties:
+      config_drive: true
+      flavor: {get_param: vcp_flavor}
+      image: {get_param: vcp_image}
+      metadata:
+        gateway: {get_param: gateway_ip} 
+        hostname:
+          str_replace:
+            template: "Instance_%proj%-%ident%"
+            params:
+              '%proj%': {get_param: project_name}
+              '%ident%': {get_param: stack_name}
+        hw.pci.link.0x60.irq: 10
+        netmask: '24'
+        re0_ip:
+          {get_attr: [re_fixed_net, external_ip]}
+        re1_ip:
+          {get_attr: [re_fixed_net, external_ip]}
+        vm_chassis_i2cid: "161"
+        vm_chassisname: {get_param: stack_name}
+        vm_chassname: {get_param: stack_name}
+        vm_i2cid: '0xBAA'
+        vm_instance: 0
+        vm_is_virtual: 1
+        vm_ore_present: 0
+        vm_retype: RE-VMX
+        vmchtype: mx240
+        vmtype: 0
+        console: vidconsole
+      name: 
+        str_replace:
+          template: "Instance_%proj%-%ident%_re0"
+          params:
+            '%proj%': {get_param: project_name}
+            '%ident%': {get_param: stack_name}
+      networks:
+      - port: {get_attr: [re_fixed_net, external_port]}
+      - port: {get_attr: [re_fixed_net, internal_port]}
+      personality: {
+        /var/db/cumulus/baseline_config.template: {get_file: vmx_baseline.conf}}
+    type: OS::Nova::Server
+

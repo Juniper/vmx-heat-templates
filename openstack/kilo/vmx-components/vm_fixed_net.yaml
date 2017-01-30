@@ -1,0 +1,43 @@
+#Copyright (c) Juniper Networks, Inc., 2017-2024.
+#All rights reserved.
+
+heat_template_version: 2015-04-30
+parameters:
+  project_name: {description: Project name, type: string}
+  public_network: {description: ID of public network, type: string}
+  re_pfe_network: {description: ID of RE-PFE network, type: string}
+  ext_name: {description: name of external port, type: string}
+  int_name: {description: name of internal port, type: string}
+  internal_ip: {description: IP of internal port, type: string}
+  stack_name: {description: Stack name, type: string}
+
+resources:
+  external_port:
+    type: port.yaml
+    properties:
+      vnetwork_id: {get_param: public_network}
+      pname: {get_param: ext_name}
+      stack_name: {get_param: stack_name}
+
+  internal_port:
+      type: re_pfe_port.yaml
+      properties:
+        vnetwork_id: {get_param: re_pfe_network}
+        ip_addr: {get_param: internal_ip} 
+        name:
+          str_replace:
+            template: "Port_%proj%-%ident%_%name%"
+            params:
+              '%proj%': {get_param: project_name}
+              '%ident%': {get_param: stack_name}
+              '%name%': {get_param: int_name}
+outputs:
+  external_port:
+    description: external port
+    value: {get_attr: [external_port, port]}
+  external_ip:
+    description: external port IP 
+    value: {get_attr: [external_port, ip]}
+  internal_port:
+    description: internal port
+    value: {get_attr: [internal_port, port]}

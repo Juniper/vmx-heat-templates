@@ -1,0 +1,44 @@
+#Copyright (c) Juniper Networks, Inc., 2017-2024.
+#All rights reserved.
+
+heat_template_version: 2015-04-30
+parameters:
+  project_name: {description: Project name, type: string}
+  vnetwork_id: {description: ID of network, type: string}
+  name: {description: name, type: string}
+  stack_name: {description: Stack name, type: string}
+  vlan_filter: {description: vlan_filter, type: json} 
+  vlan_insert: {description: vlan_insert, type: boolean, default: true} 
+  vlan_strip: {description: vlan_strip, type: boolean, default: true} 
+  vlan_broadcast: {description: vlan_broadcast, type: boolean, default: true} 
+  vlan_unknown_multicast: {description: vlan_unknown_multicast, type: boolean, default: true} 
+  vlan_unknown_unicast: {description: vlan_unknown_unicast, type: boolean, default: true}
+
+resources:
+  sriov_port:
+    type: OS::Neutron::Port
+    properties:
+      binding:vnic_type: direct
+      network_id: {get_param: vnetwork_id}
+      value_specs: {
+        ATT_VF_VLAN_FILTER: { get_param: vlan_filter },
+        ATT_VF_INSERT_STAG: { get_param: vlan_insert },
+        ATT_VF_VLAN_STRIP: { get_param: vlan_strip },
+        ATT_VF_BROADCAST_ALLOW: { get_param: vlan_broadcast },
+        ATT_VF_UNKNOWN_MULTICAST_ALLOW: { get_param: vlan_unknown_multicast },
+        ATT_VF_UNKNOWN_UNICAST_ALLOW: { get_param: vlan_unknown_unicast }
+        #ATT_VF_LINK_STATUS: "auto"
+      }
+      name: 
+        str_replace:
+          template: "Port_%proj%-%ident%_%name%"
+          params:
+            '%proj%': {get_param: project_name}
+            '%ident%': {get_param: stack_name}
+            '%name%': {get_param: name}
+
+outputs:
+  port:
+    description: port
+    value: {get_resource: sriov_port}
+

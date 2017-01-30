@@ -1,0 +1,63 @@
+#Copyright (c) Juniper Networks, Inc., 2017-2024.
+#All rights reserved.
+
+heat_template_version: 2015-10-15
+parameters:
+  id: {description: ID of VM, type: string}
+  fpc_ip: {description: IP of FPC VM, type: string}
+  re_pfe_network: {description: ID of RE-PFE, type: string}
+  fabric_network: {description: ID of Fabric, type: string}
+  net_cidr1: {description: cidr of net1, type: string}
+  physical_net1: {description: physnet1, type: string}
+  seg_id1: {description: seg_id1, type: string}
+  net_cidr2: {description: cidr of net2, type: string}
+  physical_net2: {description: physnet2, type: string}
+  seg_id2: {description: seg_id2, type: string}
+  shared: {description: shared or not, type: string}
+
+resources:
+  fpc:
+    type: OS::Nova::VmxFpcSingle
+    properties:
+      id: 0
+      re0_ip: {get_attr: [fpc_fixed_net, external_ip]}
+      all_ports: [{get_attr: [fpc_fixed_net, external_port]},
+                  {get_attr: [fpc_fixed_net, internal_port]},
+                  {get_attr: [fpc_ge_port1, port]},
+                  {get_attr: [fpc_ge_port2, port]}]
+
+  fpc_fixed_net:
+    type: OS::Networking::VmxFpcFixedNet
+    properties:
+      re_pfe_network: {get_param: re_pfe_network}
+      fabric_network: {get_param: fabric_network}
+      id: {get_param: id}
+      internal_ip: {get_param: fpc_ip} 
+
+  fpc_provider_net1:
+    type: OS::Networking::VmxNetProvider
+    properties:
+      net_cidr: {get_param: net_cidr1} 
+      physical_net: {get_param: physical_net1} 
+      seg_id: {get_param: seg_id1} 
+      shared: {get_param: shared}
+      
+  fpc_ge_port1:
+    type: OS::Networking::VmxSriovPort
+    properties:
+      vnetwork_id: {get_resource: fpc_provider_net1}
+      name: fpc0_WAN_0
+
+  fpc_provider_net2:
+    type: OS::Networking::VmxNetProvider
+    properties:
+      net_cidr: {get_param: net_cidr2} 
+      physical_net: {get_param: physical_net2} 
+      seg_id: {get_param: seg_id2} 
+      shared: {get_param: shared}
+
+  fpc_ge_port2:
+    type: OS::Networking::VmxSriovPort
+    properties:
+      vnetwork_id: {get_resource: fpc_provider_net2}
+      name: fpc0_WAN_1

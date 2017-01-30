@@ -1,0 +1,27 @@
+#Copyright (c) Juniper Networks, Inc., 2017-2024.
+#All rights reserved.
+
+heat_template_version: 2015-04-30
+parameters:
+
+resources:
+  vmx_int_network:
+    type: OS::Networking::VmxInternalNetContrail
+    properties:
+      stack_name: {get_param: 'OS::stack_name'}
+
+  re0:
+    type: OS::Nova::VmxRe
+    properties:
+      re_pfe_network: {get_attr: [vmx_int_network, re_pfe_network]}
+      stack_name: {get_param: 'OS::stack_name'}
+
+  fpc0:
+    type: OS::Nova::VmxCFpc
+    properties:
+      id: 0
+      fpc_ip: 128.0.0.16
+      re_pfe_network: {get_attr: [vmx_int_network, re_pfe_network]}
+      fabric_network: {get_attr: [vmx_int_network, fabric_network]}
+      stack_name: {get_param: 'OS::stack_name'}
+

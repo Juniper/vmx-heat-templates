@@ -1,0 +1,57 @@
+#Copyright (c) Juniper Networks, Inc., 2017-2024.
+#All rights reserved.
+
+heat_template_version: 2015-10-15
+parameters:
+  project_name: {description: Project name, type: string}
+  id: {description: Forwarding plane id, type: string}
+  vfp_image: {description: Forwarding plane image, type: string}
+  vfp_flavor: {description: Flavor of Forwarding plane Image, type: string}
+  gateway_ip: {description: ip of gateway, type: string}
+  re0_ip: {description: ip of Control Plane0, type: string}
+  all_ports: {description: wan port list, type: comma_delimited_list}
+  stack_name: {description: Stack name, type: string}
+
+resources:
+  fpc:
+    properties:
+      config_drive: true
+      flavor: {get_param: vfp_flavor}
+      image: {get_param: vfp_image}
+      metadata:
+        boot_noveriexec: 'yes'
+        gateway: {get_param: gateway_ip}
+        hostname:
+          str_replace:
+            template: "Instance_%proj%-%ident%-fpc%id%"
+            params:
+              '%proj%': {get_param: project_name}
+              '%ident%': {get_param: stack_name}
+              '%id%': {get_param: id}
+        hw.pci.link.0x60.irq: 10
+        netmask: '24'
+        re0_ip: {get_param: re0_ip}
+        vm_chassname: {get_param: stack_name}
+        vm_chassis_i2cid: "161"
+        vm_i2cid: '0xBAA'
+        vm_instance: {get_param: id} 
+        vm_is_virtual: 1
+        vm_ore_present: 0
+        vm_retype: RE-VMX
+        vmchtype: mx240
+        vmtype: 1
+      name:
+        str_replace:
+          template: "Instance_%proj%-%ident%_fpc%id%"
+          params:
+            '%proj%': {get_param: project_name}
+            '%ident%': {get_param: stack_name}
+            '%id%': {get_param: id}
+      networks:
+        repeat:
+          for_each:
+            <%ports%>: { get_param: all_ports }
+          template:
+            port: <%ports%>
+    type: OS::Nova::Server
+

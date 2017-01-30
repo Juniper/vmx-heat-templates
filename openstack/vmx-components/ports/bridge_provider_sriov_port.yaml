@@ -1,0 +1,58 @@
+#Copyright (c) Juniper Networks, Inc., 2017-2024.
+#All rights reserved.
+
+heat_template_version: 2015-10-15
+parameters:
+  net_cidr: {description: network addr (CIDR notation), type: string}
+  project_name: {description: project name, type: string}
+  physical_net: {description: neutron physical network, type: string}
+  seg_id: {description: Vlan ID of the provider network, type: string}
+  shared: {description: Is it shared, type: string}
+  ip: {description: IP of port, type: string}
+  stack_name: {description: Stack name, type: string}
+
+resources:
+  bridge_network:
+    type: OS::Neutron::ProviderNet
+    properties:
+      network_type: vlan
+      physical_network: {get_param: physical_net} 
+      segmentation_id: {get_param: seg_id}
+      shared: {get_param: shared} 
+      admin_state_up: true
+      name:
+        str_replace:
+          template: "Network_WAN_%proj%_%ident%"
+          params: 
+            '%ident%': {get_param: stack_name}
+            '%proj%': {get_param: project_name}
+
+  bridge_network_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      cidr: {get_param: net_cidr}
+      network_id: {get_resource: bridge_network}
+      name: 
+        str_replace:
+          template: "Subnet_%proj%_WAN_%ident%"
+          params:
+            '%ident%': {get_param: stack_name}
+            '%proj%': {get_param: project_name}
+
+  sriov_port:
+    type: OS::Neutron::Port
+    properties:
+      binding:vnic_type: direct
+      network_id: {get_param: vnetwork_id}
+      name: {get_param: name}
+      fixed_ips:
+        - ip_address: {get_param: ip}
+
+outputs:
+  bridge_network:
+    description: bridge
+    value: {get_resource: bridge_network}
+
+  port:
+    description: port
+    value: {get_resource: sriov_port}

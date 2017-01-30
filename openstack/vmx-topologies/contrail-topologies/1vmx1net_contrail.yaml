@@ -1,0 +1,20 @@
+#Copyright (c) Juniper Networks, Inc., 2017-2024.
+#All rights reserved.
+
+heat_template_version: 2015-10-15
+parameters:
+  ge_cidr1: {default: 10.10.15.0/24, description: CIDR GE net, type: string}
+
+resources:
+  br1:
+    type: OS::Networking::VmxNetContrail
+    properties:
+      net_cidr: {get_param: ge_cidr1}
+      bname: br1
+
+  vmx1:
+    type: OS::Nova::VmxContrail
+    properties:
+      net_id: {get_attr: [br1, bridge_network]}
+      ip: 10.10.15.1
+

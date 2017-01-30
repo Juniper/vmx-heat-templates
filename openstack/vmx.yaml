@@ -1,0 +1,46 @@
+#Copyright (c) Juniper Networks, Inc., 2017-2024.
+#All rights reserved.
+
+heat_template_version: 2015-10-15
+parameters:
+  net_id1: {description: ID of ge-network, type: string}
+  stack_name: {description: name,  type: string}
+
+resources:
+  vmx_int_network:
+    type: OS::Networking::VmxInternalNet
+    properties:
+      stack_name: {get_param: stack_name}
+
+  re0:
+    type: OS::Nova::VmxRe 
+    properties:
+      re_pfe_network: {get_attr: [vmx_int_network, re_pfe_network]}
+      stack_name: {get_param: stack_name}
+
+  fpc0:
+    type: OS::Nova::VmxFpcSingle 
+    properties:
+      id: 0
+      re0_ip: {get_attr: [fpc0_fixed_net, external_ip]}
+      all_ports: [{get_attr: [fpc0_fixed_net, external_port]},
+                  {get_attr: [fpc0_fixed_net, internal_port]},
+                  {get_attr: [fpc0_ge_port1, port]}] 
+      stack_name: {get_param: stack_name}
+
+  fpc0_fixed_net:
+    type: OS::Networking::VmxFpcFixedNet 
+    properties:
+      re_pfe_network: {get_attr: [vmx_int_network, re_pfe_network]}
+      fabric_network: {get_attr: [vmx_int_network, fabric_network]}
+      id: 0
+      internal_ip: 128.0.0.16
+      stack_name: {get_param: stack_name}
+
+  fpc0_ge_port1:
+    type: OS::Networking::VmxPort
+    properties:
+      vnetwork_id: {get_param: net_id1}
+      pname: fpc0_WAN_0
+      stack_name: {get_param: stack_name}
+

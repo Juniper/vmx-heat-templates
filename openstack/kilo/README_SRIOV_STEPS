@@ -1,0 +1,252 @@
+#Copyright (c) Juniper Networks, Inc., 2017-2024.
+#All rights reserved.
+
+Note, this Kilo guide is specifically for ATT, and only applicable for SRIOV.
+It also assumes VFD daemon from ATT, along with openstack patches from ATT,
+will be used to bring up vMX.
+Setup is Kilo on Ubuntu Openstack.
+
+Steps to Enable SR-IOV on Ubuntu Contrail and run vMX:
+(Kilo)
+Assume the NIC to enable SR-IOV on is "eth4" on compute nodes. 
+
+1. (Controller) Apply heat and neutron patches on Controller
+   Patches are kept in openstack_vfd_patches.
+   patch -p1 < $path/openstack_vfd_patches/heat.patch
+   patch -p1 < $path/openstack_vfd_patches/neutron.patch
+
+2. (Compute) Apply nova and sriov.patch patches on compute
+   patch -p1 < $path/openstack_vfd_patches/nova.patch
+   patch -p1 < $path/openstack_vfd_patches/sriov.patch
+
+3. (Compute) Make sure vt-d is enabled in Bios on all compute nodes.
+
+4. (Compute) Enable ASPM in Bios on all compute nodes
+Check it is enabled by doing:
+lspci -vv | grep ASPM | grep Enabled
+
+5. (Compute) In /etc/default/grub, GRUB_CMDLINE_LINUX_DEFAULT="intel_iommu=on"
+
+For vfd, additionally do 
+In /etc/default/grub, GRUB_CMDLINE_LINUX_DEFAULT="hugepagesz=2M hugepages=240 default_hugepagesz=2M"
+
+Then:
+
+update-grub
+reboot
+
+Below we are assuming the interface we are going to use for the SRIOV is eth4. 
+Use the appropriate interface on your setup
+
+6. (Compute) Enable the required number of VF's on the required NIC 
+echo '32' > /sys/class/net/eth4/device/sriov_numvfs
+
+Check with lspci that VFs were in fact configured on the compute node:
+lspci -nn | grep Virtual
+
+7. (Compute) Unload ixgbevf driver:
+modprobe -r ixgbevf
+
+8. (Compute) Load vfio-pci kernel module: 
+modprobe vfio-pci
+
+9. (Compute) configure the eth NIC
+ifconfig eth4 promisc
+ifconfig eth4 allmulti
+ifconfig eth4 mtu 9192
+ip link set eth4 vf 0 spoofchk off
+
+10. (Compute) In  /etc/nova/nova.conf file on the compute nodes add:
+
+A. For each VF you want to pass to the VM, add an entry with pci ID of the VF.
+Note, we have enabled 32 VFs on each NIC, but you can list only as many VFs
+as are actually being used in nova.conf, as shown below:
+
+pci_passthrough_whitelist = { "address": "0000:03:10.0", "physical_network": "physnet1"}
+
+B. For older images, to enable metadata to be read by Junos, add:
+
+config_drive_format=vfat
+
+
+C. For VF-agent, also add:
+
+[vf_agent]
+use_vf_agent=True
+
+Then do:
+service nova-compute restart
+
+11. (Compute) Install python-docopt and VFD:
+
+cp /etc/apt/sources.list /etc/apt/sources.list_old
+cp /etc/apt/sources.list_backup /etc/apt/sources.list
+apt-get update
+apt-get install python-docopt
+cp /etc/apt/sources.list_old /etc/apt/sources.list
+apt-get clean
+apt-get update
+dpkg -i attlrvfd_1.0j-1_amd64.deb
+
+12. (Compute) Make sure VFD is installed, configured and running.
+
+VFD configuration file /etc/vfd/vfd.cfg
+
+{
+     "comments": [
+            "sample conf file, fill the pciids",
+            "cp vfd.cfg.sample vfd.cfg",
+            "initctl start vfd",
+            "default_mtu is used if mtu is omitted from a pciid object."
+         ],
+
+         "fifo": "/var/lib/vfd/request",
+         "log_dir": "/var/log/vfd",
+         "log_keep": 60,
+         "init_log_level": 2,
+         "log_level": 2,
+         "config_dir": "/var/lib/vfd/config",
+         "cpu_mask": "0x01",
+         "dpdk_log_level": 2,
+         "dpdk_init_log_level": 8,
+         "default_mtu": 9001,
+
+         "pciids": [
+             { "id": "0000:03:00.0" }
+         ]
+}
+Note, relevent changes:
+
+"default_mtu": 9001,
+{ "id": "0000:03:00.0" }
+ 
+13. (Compute) Start VFD process
+ 
+a. Start VFD and check status before spinning vms.
+	$ service vfd start
+	$ service vfd status
+ 	 vfd start/running, process 30929
+
+b. Make sure iplex interface is working as nova will interact with it.
+
+	$ iplex show all
+{ "state": "OK", "msg": "
+PF/VF  ID    PCIID           Link      Speed     Duplex    RX pkts   RX bytes  RX errors RX dropped    TX pkts   TX bytes  TX errors    Spoofed
+pf      0    0000:02:00.0    UP        10000          1          0          0          0          0          0          0          0          0
+" }
+
+
+14. (Compute) Add correct permissions for VFIO on Compute node:
+In /etc/libvirt/qemu.conf, add:
+In cgroup_device_acl = [,
+add an entry : "/dev/vfio/vfio"
+
+So it looks like:
+
+cgroup_device_acl = [
+    "/dev/null", "/dev/full", "/dev/zero",
+    "/dev/random", "/dev/urandom",
+    "/dev/ptmx", "/dev/kvm", "/dev/kqemu",
+    "/dev/rtc", "/dev/hpet","/dev/net/tun","/dev/vfio/vfio",
+]
+
+Restart libvirtd:
+service libvirt-bin restart
+
+15. (Controller) On controller node, in /etc/nova/nova.conf, add:
+
+scheduler_default_filters = PciPassthroughFilter
+scheduler_available_filters = nova.scheduler.filters.all_filters
+scheduler_available_filters = nova.scheduler.filters.pci_passthrough_filter.PciPassthroughFilter
+
+Then do:
+service nova-scheduler restart
+
+16. (Controller) Create net and subnet as follows :
+
+neutron net-create  --provider:physical_network=physnet1 --provider:segmentation_id=3501 sriov1
+
+neutron subnet-create sriov1 12.12.12.0/24
+OR:
+
+Use the provider_net.yaml heat template provided:
+Enter the correct values for net_cidr, physical_net, seg_id, shared, 
+in provider_net.env, and run it:
+
+heat stack-create -f provider_net.yaml -e provider_net.env <provider-net-name>
+
+17. For occam images, create vRE VM with 1 vcpu only, or use foll. fix:
+
+For occam images we require that APIC virtualization is disabled on the 
+compute nodes.
+echo 'options kvm_intel nested=1 enable_apicv=0' >> /etc/modprobe.d/qemu-system-x86.conf
+sudo init 6
+
+18. (Controller) Create Glance images for vRE and vPFE:
+
+cd scripts
+./vmx_osp_images.sh <re-img-name> <re-img-path> <pfe-img-name> <pfe-img-path>
+
+19. (Controller) Create Flavors with pinning and hugepages enabled for vRE 
+and vPFE:
+
+cd scripts
+vmx_osp_flavors.sh has the number of vcpu and memory for vRE and vPFE 
+hard-coded to these values:
+
+re-mem=4096
+re-hdd=40
+re-vcpu=1
+
+pfe-mem=12288
+pfe-hdd=40
+pfe-vcpu=7
+
+You can change the above values in the script vmx_osp_flavors.sh, based on
+the configuration you desire.
+
+Then run:
+./vmx_osp_flavors.sh re-flv-name pfe-flv-name compute-node1 compute-node2
+
+Where, compute-node1 and compute-node2 are names of the compute nodes.
+
+They can be obtained by running the command 
+"nova hypervisor-list" - the Hypervisor hostname column gives the entries to
+be used for compute-node1, compute-node2, etc.
+
+If you have less or more than 2 compute nodes, then modify the script 
+vmx_osp_flavors.sh to delete/add an entry for 
+"nova aggregate-add-host global-group <compute-node>"
+for each compute node to be deleted/added.
+ 
+20. (Controller) Start vMX:
+Make sure vmx_contrail.env has correct parameters:
+- Enter the network id of the neutron network created in Step 16, in 
+provider_net_id1
+- Enter other paramters in parameters_default: section of vmx_contrail.env
+
+Enter the per-port VFD parameters:
+- Under fpc_ge_port1 in vmx-components/fpc_contrail.yaml, enter the correct
+  values for (default values are lised):
+      vlan_filter: 
+      vlan_insert: true
+      vlan_strip: true
+      vlan_broadcast: true
+      vlan_unknown_multicast: true
+      vlan_unknown_unicast: true
+
+Start the vMX using heat stack command:
+- heat stack-create -f vmx_contrail.yaml -e vmx_contrail.env vmx-contrail1
+
+To stop and cleanup:
+service vfd stop
+modprobe -r vfio-pci
+modprobe ixgbe 
+modprobe ixgbevf 
+
+Then /sys/class/net/eth2/device/sriov_numvfs
+can now be seen (until you do modprobe the device will not be seen under
+/sys/class/net/)
+
+echo '0' > /sys/class/net/eth2/device/sriov_numvfs
+

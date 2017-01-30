@@ -1,0 +1,65 @@
+#Copyright (c) Juniper Networks, Inc., 2017-2024.
+#All rights reserved.
+
+heat_template_version: 2015-10-15
+parameters:
+  project_name: {description: Project name, type: string}
+  stack_name: {description: Stack name, type: string}
+
+resources:
+  bridge_net_re_pfe:
+    properties:
+      admin_state_up: true
+      name: 
+        str_replace:
+          template: "Network_%proj%_Internal-%ident%-vfp0-to-vcp0"
+          params:
+            '%ident%': {get_param: stack_name}
+            '%proj%': {get_param: project_name}
+    type: OS::Neutron::Net
+
+  bridge_network_subnet_re_pfe:
+    properties:
+      cidr: 128.0.0.0/24
+      network_id: {get_resource: bridge_net_re_pfe}
+      enable_dhcp: False
+      gateway_ip: 128.0.0.3
+      name: 
+        str_replace:
+          template: "Subnet_%proj%_128.0.0.0_24_%ident%"
+          params:
+            '%ident%': {get_param: stack_name}
+            '%proj%': {get_param: project_name}
+    type: OS::Neutron::Subnet
+
+  bridge_net_fabric:
+    properties:
+      admin_state_up: true
+      name:
+        str_replace:
+          template: "Bridge_%proj%-%ident%_fabric"
+          params:
+            '%proj%': {get_param: project_name}
+            '%ident%': {get_param: stack_name}
+    type: OS::Neutron::Net
+
+  bridge_net_subnet_fabric:
+    properties:
+      cidr: 20.10.1.0/24 
+      network_id: {get_resource: bridge_net_fabric}
+      name:
+        str_replace:
+          template: "Subnet_Bridge_%proj%-%ident%_fabric"
+          params:
+            '%proj%': {get_param: project_name}
+            '%ident%': {get_param: stack_name}
+    type: OS::Neutron::Subnet
+
+outputs:
+  re_pfe_network:
+    description: RE-PFE bridge
+    value: {get_resource: bridge_net_re_pfe}
+
+  fabric_network:
+    description: Fabric bridge
+    value: {get_resource: bridge_net_fabric}

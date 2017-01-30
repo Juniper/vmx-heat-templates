@@ -1,0 +1,29 @@
+#Copyright (c) Juniper Networks, Inc., 2017-2024.
+#All rights reserved.
+
+heat_template_version: 2015-10-15
+parameters:
+  project_name: {description: Project name, type: string}
+  vnetwork_id: {description: ID of network, type: string}
+  pname: {description: name, type: string}
+  stack_name: {description: Stack name, type: string}
+
+resources:
+  sriov_port:
+    type: OS::Neutron::Port
+    properties:
+      binding:vnic_type: direct
+      network_id: {get_param: vnetwork_id}
+      name:
+        str_replace:
+          template: "Port_%proj%-%ident%_%name%"
+          params:
+            '%proj%': {get_param: project_name}
+            '%ident%': {get_param: stack_name}
+            '%name%': {get_param: pname}
+
+outputs:
+  port:
+    description: port
+    value: {get_resource: sriov_port}
+

@@ -1,0 +1,21 @@
+#Copyright (c) Juniper Networks, Inc., 2017-2024.
+#All rights reserved.
+
+heat_template_version: 2015-10-15
+parameters:
+  ge_cidr1: {default: 10.10.15.0/24, description: CIDR GE net, type: string}
+  n1: {description: name of vmx1, type: string}
+
+resources:
+  br1:
+    type: OS::Networking::VmxNet
+    properties:
+      net_cidr: {get_param: ge_cidr1}
+      bname: br1
+      stack_name: {get_param: 'OS::stack_name'}
+
+  vmx1:
+    type: OS::Nova::Vmx
+    properties:
+      net_id1: {get_attr: [br1, bridge_network]}
+      stack_name: {list_join: ['-', [{get_param: 'OS::stack_name'}, {get_param: n1}]]}

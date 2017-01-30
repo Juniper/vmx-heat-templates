@@ -1,0 +1,18 @@
+#Copyright (c) Juniper Networks, Inc., 2017-2024.
+#All rights reserved.
+
+heat_template_version: 2015-04-30
+parameters:
+  net_cidr: {description: cidr of net, type: string}
+  physical_net: {description: physnet, type: string}
+  seg_id: {description: seg_id, type: string}
+  shared: {description: shared or not, type: string}
+
+  provider_net:
+    type: OS::Networking::VmxNetProvider
+    properties:
+      net_cidr: {get_param: net_cidr}
+      physical_net: {get_param: physical_net}
+      seg_id: {get_param: seg_id}
+      shared: {get_param: shared}
+
