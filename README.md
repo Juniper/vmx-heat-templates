@@ -1,21 +1,33 @@
-openstack-heat: Heat templates for bringup of vMX on openstack installed system
+# DOCUMENTATION
 
-Overview:
+Official Documentation:
+[Getting Started Guide](https://github.com/Juniper/vmx-heat-templates/blob/master/vMX-Openstack-QuickStartGuide.pdf) and 
+[Heat Templates Guide](https://github.com/Juniper/vmx-heat-templates/blob/master/vMX-Heat-Guide.pdf)
 
-openstack-heat contains heat templates to bringup vMX on an openstack installed
-system. The system typically consists of minimum 1 controller node and minimum
-1 compute node. 
+# ABOUT
+Openstack/ contains heat templates to bring up vMX on an openstack installed system. It is applicable to both Redhat and Ubuntu openstack. The system typically consists of 1 controller and 1 or more compute nodes. A switch like a QFX may typically be used to interconnect the openstack nodes. The Getting Started Guide above can be used to configure the systems after basic openstack installation is done on controller and compute nodes. The Heat Template Guide contains actual examples of templates to bring up vMX or interconnect them via topologies.
+# SUPPORT
 
+For questions and general support, please visit our [Google Group](https://groups.google.com/forum/#!forum/vmx-osp-heat)
+# FEATURES
 
-Installation
+Bring up vMX with following features
+* Virtio interfaces
+* SRIOV interfaces
+* Lite/performance mode
+* Ubuntu & Redhat Support on Liberty
+* Multiple interfaces
+* Interconnect vMX topologies
 
-The vMX-Openstack-QuickStartGuide.pdf contains instructions for 
-configuring controller and compute nodes of an openstack system installed with
-Redhat Openstack or Ubuntu Openstack, for installing and using vMX.
-The vMX-Heat-Guide.pdf is a guide to use heat templates to bring up vMX and 
-vMX topologies after configuration steps in vMX-Openstack-QuickStartGuide.pdf
-are followed.
-The openstack/ directory contains the heat templates, referred to in 
-vMX-Heat-Guide.pdf
+# LICENSE
 
+Apache 2.0
+
+# CONTRIBUTORS
+
+Juniper Networks is actively contributing to and maintaining this repo. 
+
+*Contributors:*
+
+[Anjali Kulkarni](https://github.com/anjalinn), [Pratik Maru](https://github.com/marupratik)
 
