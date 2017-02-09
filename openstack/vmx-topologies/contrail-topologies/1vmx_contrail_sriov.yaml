@@ -1,0 +1,13 @@
+#Copyright (c) Juniper Networks, Inc., 2017-2024.
+#All rights reserved.
+
+heat_template_version: 2015-10-15
+parameters:
+  net_id1: {description: ID of ge-network, type: string}
+
+resources:
+  vmx1:
+    type: OS::Nova::VmxContrailSriov
+    properties:
+      net_id1: {get_param: net_id1}
+      stack_name: {get_param: 'OS::stack_name'}
