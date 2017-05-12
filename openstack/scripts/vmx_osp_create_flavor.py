@@ -29,7 +29,7 @@ def flavor_pin(name):
 	    for hypv in hypv_list:
                 for h in range(len(hypv_data)):
 		    hypv_name = hypv_data[h]['Hypervisor Hostname']
-		    if hypv_name == hypv:
+		    if hypv in hypv_name:
                          hypervisor_id.append(hypv_data[h]['ID'])
 	    hypervisor_id.sort()
 	    AGGREGATE_NAME = '-'.join(str(x) for x in hypervisor_id)+'-group'
@@ -56,10 +56,10 @@ def flavor_pin(name):
 			openstack_flv_config.write('nova aggregate-set-metadata ' + str(AGGREGATE_NAME) + ' ' + str(aggregate_propery))
 			openstack_flv_config.write('\n')
                 	if compute == "none":
-				host_data_json = subprocess.Popen(['openstack', 'hypervisor', 'list', '-f', 'json', '-c', 'Hypervisor Hostname'], stdout=subprocess.PIPE).communicate()[0]
+				host_data_json = subprocess.Popen(['openstack', 'compute', 'service',  'list', '--service', 'nova-compute', '-f',  'json', '-c', 'Host'], stdout=subprocess.PIPE).communicate()[0]
 				host_data = json.loads(str(host_data_json))
          			for hst in range(len(host_data)):
-                			host = host_data[hst]['Hypervisor Hostname']
+				        host = host_data[hst]['Host']
                 			openstack_flv_config.write('nova aggregate-add-host  ' + str (AGGREGATE_NAME) + ' ' + str(host) )
                 			openstack_flv_config.write('\n')
                 	else :
