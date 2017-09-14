@@ -1,0 +1,44 @@
+#Copyright (c) Juniper Networks, Inc., 2017-2024.
+#All rights reserved.
+
+heat_template_version: 2015-10-15
+parameters:
+  project_name: {description: Project name, type: string}
+  net_cidr: {description: network addr (CIDR notation), type: string}
+  bname: {description: Name, type: string}
+  stack_name: {description: Stack name, type: string}
+
+resources:
+  bridge_network:
+    properties:
+      name:
+        str_replace:
+          template: "Bridge_%proj%-%ident%_%bname%"
+          params:
+            '%proj%': {get_param: project_name}
+            '%ident%': {get_param: stack_name}
+            '%bname%': {get_param: bname}
+      virtual_network_properties:
+        {
+          virtual_network_properties_forwarding_mode: l2,
+        }
+      flood_unknown_unicast: true
+    type: OS::ContrailV2::VirtualNetwork
+
+  bridge_network_subnet:
+    properties:
+      cidr: {get_param: net_cidr}
+      network_id: {get_resource: bridge_network}
+      name:
+        str_replace:
+          template: "Subnet_Bridge_%proj%-%ident%_%bname%"
+          params:
+            '%proj%': {get_param: project_name}
+            '%ident%': {get_param: stack_name}
+            '%bname%': {get_param: bname}
+    type: OS::Neutron::Subnet
+
+outputs:
+  bridge_network:
+    description: bridge
+    value: {get_resource: bridge_network}

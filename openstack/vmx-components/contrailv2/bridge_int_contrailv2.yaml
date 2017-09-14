@@ -1,0 +1,43 @@
+#Copyright (c) Juniper Networks, Inc., 2017-2024.
+#All rights reserved.
+
+heat_template_version: 2015-10-15
+parameters:
+  project_name: {description: Project name, type: string}
+  stack_name: {description: Stack name, type: string}
+
+resources:
+  bridge_network:
+    properties:
+      name:
+        str_replace:
+          template: "Network_%proj%_Internal-%ident%-vfp0-to-vcp0"
+          params:
+            '%ident%': {get_param: stack_name}
+            '%proj%': {get_param: project_name}
+      virtual_network_properties:
+        {
+          virtual_network_properties_forwarding_mode: l2,
+        }
+     flood_unknown_unicast: True
+    type: OS::ContrailV2::VirtualNetwork
+
+  bridge_network_subnet:
+    properties:
+      cidr: 128.0.0.0/24
+      network_id: {get_resource: bridge_network}
+      enable_dhcp: False
+      gateway_ip: 128.0.0.3
+      name:
+        str_replace:
+          template: "Subnet_%proj%_128.0.0.0_24_%ident%"
+          params:
+            '%ident%': {get_param: stack_name}
+            '%proj%': {get_param: project_name}
+    type: OS::Neutron::Subnet
+
+outputs:
+  bridge_network:
+    description: bridge
+    value: {get_resource: bridge_network}
+
