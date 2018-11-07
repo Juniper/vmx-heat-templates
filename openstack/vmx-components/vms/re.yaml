@@ -20,6 +20,7 @@ resources:
       ext_name: public_re
       int_name: internal_re
       internal_ip: 128.0.0.1
+      internal_ip1: 128.0.0.4
       stack_name: {get_param: stack_name}
 
   re:

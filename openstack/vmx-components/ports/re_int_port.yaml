@@ -1,0 +1,28 @@
+#Copyright (c) Juniper Networks, Inc., 2017-2024.
+#All rights reserved.
+
+heat_template_version: 2015-10-15 
+parameters:
+  vnetwork_id: {description: ID of network, type: string}
+  ip_addr: {description: Fixed IP, type: string}
+  ip_addr1: {description: Fixed IP, type: string}
+  name: {description: name, type: string}
+
+resources:
+  port:
+    type: OS::Neutron::Port
+    properties:
+      name: {get_param: name}
+      network: {get_param: vnetwork_id}
+      fixed_ips:
+        - ip_address: {get_param: ip_addr}
+        - ip_address: {get_param: ip_addr1}
+
+outputs:
+  port:
+    description: port
+    value: { get_resource: port}
+  ip:
+    description: The IP address assigned to the VM
+    value: { get_attr: [port, fixed_ips, 0, ip_address] }
+

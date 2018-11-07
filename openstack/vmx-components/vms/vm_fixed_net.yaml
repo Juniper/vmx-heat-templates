@@ -9,6 +9,7 @@ parameters:
   ext_name: {description: name of external port, type: string}
   int_name: {description: name of internal port, type: string}
   internal_ip: {description: IP of internal port, type: string}
+  internal_ip1: {description: IP of internal port, type: string}
   stack_name: {description: Stack name, type: string}
 
 resources:
@@ -20,10 +21,11 @@ resources:
       stack_name: {get_param: stack_name}
 
   internal_port:
-      type: OS::Networking::VmxRePfePort
+      type: OS::Networking::VmxReIntPort
       properties:
         vnetwork_id: {get_param: re_pfe_network}
         ip_addr: {get_param: internal_ip} 
+        ip_addr1: {get_param: internal_ip1}
         name:
           str_replace:
             template: "Port_%proj%-%ident%_%name%"
